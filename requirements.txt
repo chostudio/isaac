@@ -1,0 +1,4 @@
+anthropic>=1.16
+openai>=1.0
+numpy
+pytest
