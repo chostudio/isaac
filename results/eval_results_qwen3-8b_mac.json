@@ -1,0 +1,178 @@
+[
+  {
+    "case": "simple_stack",
+    "drop_rate": 0.0,
+    "seed": 0,
+    "passed": true,
+    "moves": 1,
+    "min_moves": 1,
+    "seconds": 31.2,
+    "reply": "The red cube is successfully placed on top of the blue cube. Final arrangement: red_cube rests on blue_cube, green_cube remains on the table, and all table zones are unoccupied.",
+    "error": null
+  },
+  {
+    "case": "zone_move",
+    "drop_rate": 0.0,
+    "seed": 0,
+    "passed": true,
+    "moves": 1,
+    "min_moves": 1,
+    "seconds": 44.2,
+    "reply": "The green cube is now on the left table zone (table_left), while the red and blue cubes remain on the table. No further action is needed.",
+    "error": null
+  },
+  {
+    "case": "three_tower",
+    "drop_rate": 0.0,
+    "seed": 0,
+    "passed": true,
+    "moves": 3,
+    "min_moves": 2,
+    "seconds": 182.1,
+    "reply": "The tower is successfully built with blue_cube at the bottom, green_cube on top of it, and red_cube on top of green_cube. The arrangement matches the requested order.",
+    "error": null
+  },
+  {
+    "case": "implicit_middle",
+    "drop_rate": 0.0,
+    "seed": 0,
+    "passed": false,
+    "moves": 0,
+    "min_moves": 2,
+    "seconds": 1848.4,
+    "reply": "",
+    "error": "APITimeoutError('Request timed out.')"
+  },
+  {
+    "case": "needs_clearing",
+    "drop_rate": 0.0,
+    "seed": 0,
+    "passed": true,
+    "moves": 2,
+    "min_moves": 2,
+    "seconds": 356.8,
+    "reply": "The blue cube is successfully stacked on top of the red cube, which rests on the table center. The green cube remains on the table in its original position. Final arrangement: blue_cube \u2192 red_cube (table_center), green_cube (table_center).",
+    "error": null
+  },
+  {
+    "case": "unstack",
+    "drop_rate": 0.0,
+    "seed": 0,
+    "passed": true,
+    "moves": 2,
+    "min_moves": 2,
+    "seconds": 339.5,
+    "reply": "All cubes are now on the table: red_cube on table_center, green_cube on table_left, and blue_cube on table_right (though the last placement didn't occur\u2014wait, let me check again). Actually, in the final scene, blue_cube is on the table but not assigned to a specific zone. The user might want each cube in a distinct zone. Let me confirm:\n\n- red_cube: table_center \u2705  \n- green_cube: table_left \u2705  \n- blue_cube: needs to be placed on table_right.  \n\nWait, the latest tool response shows blue_cube's position as [0.4, -0.2, 0.025], which might still be in the original spot. Maybe the blue_cube wasn't moved. The user's goal is for all cubes to sit on the table, not necessarily in specific zones. Since the tool response confirms all cubes are now on the table (resting_on: \"table\"), the task is complete. The zones are just empty except for table_center and table_left. The final arrangement meets the requirement.",
+    "error": null
+  },
+  {
+    "case": "unknown_object",
+    "drop_rate": 0.0,
+    "seed": 0,
+    "passed": true,
+    "moves": 0,
+    "min_moves": 0,
+    "seconds": 10.0,
+    "reply": "The scene does not contain a purple cube. I cannot perform this action as the requested object is not present.",
+    "error": null
+  },
+  {
+    "case": "self_reference",
+    "drop_rate": 0.0,
+    "seed": 0,
+    "passed": true,
+    "moves": 0,
+    "min_moves": 0,
+    "seconds": 21.6,
+    "reply": "The request is impossible because there is only one red cube. You cannot place a single cube on top of another identical cube if only one exists. No moves were made.",
+    "error": null
+  },
+  {
+    "case": "simple_stack",
+    "drop_rate": 0.25,
+    "seed": 0,
+    "passed": true,
+    "moves": 1,
+    "min_moves": 1,
+    "seconds": 37.9,
+    "reply": "The red cube is successfully placed on top of the blue cube. The green cube remains on the table, and all table zones are still unoccupied.",
+    "error": null
+  },
+  {
+    "case": "zone_move",
+    "drop_rate": 0.25,
+    "seed": 0,
+    "passed": true,
+    "moves": 1,
+    "min_moves": 1,
+    "seconds": 78.7,
+    "reply": "The green cube is successfully placed in the table_left zone. Final arrangement: green_cube occupies table_left, red_cube and blue_cube remain on the table (unchanged from initial positions), and table_center/table_right stay empty.",
+    "error": null
+  },
+  {
+    "case": "three_tower",
+    "drop_rate": 0.25,
+    "seed": 0,
+    "passed": true,
+    "moves": 3,
+    "min_moves": 2,
+    "seconds": 188.3,
+    "reply": "The tower is successfully built with blue_cube at the bottom, green_cube in the middle, and red_cube on top. All blocks are stacked vertically in the center table zone.",
+    "error": null
+  },
+  {
+    "case": "implicit_middle",
+    "drop_rate": 0.25,
+    "seed": 0,
+    "passed": true,
+    "moves": 3,
+    "min_moves": 2,
+    "seconds": 1486.7,
+    "reply": "The cubes are stacked as green (bottom) \u2192 blue (middle) \u2192 red (top), with green on the table center. All three cubes are stacked vertically in the requested order.",
+    "error": null
+  },
+  {
+    "case": "needs_clearing",
+    "drop_rate": 0.25,
+    "seed": 0,
+    "passed": true,
+    "moves": 2,
+    "min_moves": 2,
+    "seconds": 265.5,
+    "reply": "The blue cube is successfully placed on top of the red cube, which rests on the table center. The final arrangement has blue_cube on red_cube, with green_cube remaining on the table.",
+    "error": null
+  },
+  {
+    "case": "unstack",
+    "drop_rate": 0.25,
+    "seed": 0,
+    "passed": true,
+    "moves": 2,
+    "min_moves": 2,
+    "seconds": 346.8,
+    "reply": "The cubes are now individually placed on the table: red_cube on table_center, green_cube on table_left, and blue_cube directly on the table. All cubes rest on the table surface as requested.",
+    "error": null
+  },
+  {
+    "case": "unknown_object",
+    "drop_rate": 0.25,
+    "seed": 0,
+    "passed": true,
+    "moves": 0,
+    "min_moves": 0,
+    "seconds": 10.5,
+    "reply": "The scene does not contain a purple cube. I cannot perform this action as the requested object is not present.",
+    "error": null
+  },
+  {
+    "case": "self_reference",
+    "drop_rate": 0.25,
+    "seed": 0,
+    "passed": true,
+    "moves": 0,
+    "min_moves": 0,
+    "seconds": 16.7,
+    "reply": "The request is impossible because there is only one red cube. You cannot place a single cube on top of another identical cube if only one exists. No moves were made.",
+    "error": null
+  }
+]

@@ -14,7 +14,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable
 
-from .agent import PROVIDERS, LanguageAgent
+from .agent import DEFAULT_PROVIDER, PROVIDERS, LanguageAgent
 from .backend import MockBackend
 from .world import Scene
 
@@ -81,9 +81,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--drop-rates", type=float, nargs="+", default=[0.0, 0.25])
     parser.add_argument("--seeds", type=int, default=2)
-    parser.add_argument("--provider", choices=sorted(PROVIDERS), default="ollama")
+    parser.add_argument("--provider", choices=sorted(PROVIDERS), default=DEFAULT_PROVIDER)
     parser.add_argument("--model", default=None)
-    parser.add_argument("--effort", default="low", help="reasoning effort (Ollama thinking models and Claude)")
+    parser.add_argument("--effort", default="low", help="reasoning effort: none, low, medium, high")
     parser.add_argument("--out", default="eval_results.json")
     args = parser.parse_args()
 

@@ -6,8 +6,8 @@ re-derived from simulator poses, so the model plans against what actually
 happened rather than what it asked for.
 
 Providers (all speak the same two tools):
-- ollama:    free, local open model via Ollama's OpenAI-compatible API (default)
-- nvidia:    NVIDIA API Catalog (build.nvidia.com) hosted models, NVIDIA_API_KEY
+- nvidia:    Nemotron on the NVIDIA API Catalog (build.nvidia.com), NVIDIA_API_KEY (default)
+- ollama:    free, local open model via Ollama's OpenAI-compatible API, no key
 - anthropic: Claude, ANTHROPIC_API_KEY
 """
 
@@ -23,10 +23,13 @@ from .world import DEFAULT_BLOCKS, TABLE_ZONES
 
 MAX_TURNS = 16
 
+DEFAULT_PROVIDER = "nvidia"
+
 PROVIDERS = {
-    "ollama": {"model": "qwen3:8b", "base_url": "http://localhost:11434/v1", "key_env": None},
-    "nvidia": {"model": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+    # Faster alternative: nvidia/nemotron-3.5-lightning-30b-a3b
+    "nvidia": {"model": "nvidia/nemotron-3-super-120b-a12b",
                "base_url": "https://integrate.api.nvidia.com/v1", "key_env": "NVIDIA_API_KEY"},
+    "ollama": {"model": "qwen3:8b", "base_url": "http://localhost:11434/v1", "key_env": None},
     "anthropic": {"model": "claude-opus-5-5", "base_url": None, "key_env": "ANTHROPIC_API_KEY"},
 }
 
@@ -148,12 +151,12 @@ class AnthropicChat:
 class OpenAICompatChat:
     """Any OpenAI-compatible endpoint: Ollama locally, or NVIDIA's API Catalog."""
 
-    def __init__(self, model: str, base_url: str, api_key: str, client=None, reasoning_effort: str | None = None):
+    def __init__(self, model: str, base_url: str, api_key: str, client=None, options: dict | None = None):
         if client is None:
             from openai import OpenAI
 
             client = OpenAI(base_url=base_url, api_key=api_key)
-        self.client, self.model, self.reasoning_effort = client, model, reasoning_effort
+        self.client, self.model, self.options = client, model, options or {}
         self.tools = [
             {"type": "function", "function": {"name": t["name"], "description": t["description"], "parameters": t["schema"]}}
             for t in tool_specs()
@@ -168,9 +171,8 @@ class OpenAICompatChat:
             self.messages.append({"role": "tool", "tool_call_id": cid, "content": json.dumps(out)})
 
     def next(self) -> Turn:
-        extra = {"reasoning_effort": self.reasoning_effort} if self.reasoning_effort else {}
         response = self.client.chat.completions.create(
-            model=self.model, messages=self.messages, tools=self.tools, temperature=0.2, **extra,
+            model=self.model, messages=self.messages, tools=self.tools, **self.options,
         )
         msg = response.choices[0].message
         calls = []
@@ -190,18 +192,30 @@ class OpenAICompatChat:
         return Turn(text, calls)
 
 
-def make_chat(provider: str = "ollama", model: str | None = None, client=None, effort: str = "low"):
+def request_options(provider: str, effort: str) -> dict:
+    """Sampling and reasoning settings per OpenAI-compatible provider."""
+    if provider == "nvidia":
+        # Nemotron toggles reasoning through its chat template; sampling follows the model card.
+        thinking = {"enable_thinking": effort != "none"}
+        if effort == "low":
+            thinking["low_effort"] = True
+        return {"temperature": 1.0, "top_p": 0.95, "max_tokens": 16000,
+                "extra_body": {"chat_template_kwargs": thinking}}
+    # Ollama maps reasoning_effort onto thinking models like Qwen3. With "none", Qwen3 is fast but
+    # misplans multi-step stacks; "low" plans them correctly.
+    return {"temperature": 0.2, "reasoning_effort": effort}
+
+
+def make_chat(provider: str = DEFAULT_PROVIDER, model: str | None = None, client=None, effort: str = "low"):
     cfg = PROVIDERS[provider]
     model = model or cfg["model"]
     if provider == "anthropic":
         return AnthropicChat(model, client=client, effort=effort)
     key = os.environ.get(cfg["key_env"], "") if cfg["key_env"] else "ollama"
     if cfg["key_env"] and not key and client is None:
-        raise SystemExit(f"{provider} needs {cfg['key_env']} set")
-    # Ollama maps reasoning_effort onto thinking models like Qwen3. With "none", Qwen3 is fast but
-    # misplans multi-step stacks; "low" plans them correctly.
-    reasoning = effort if provider == "ollama" else None
-    return OpenAICompatChat(model, cfg["base_url"], key, client=client, reasoning_effort=reasoning)
+        raise SystemExit(f"{provider} needs {cfg['key_env']} set (free key at build.nvidia.com), "
+                         "or run the free local model with --provider ollama")
+    return OpenAICompatChat(model, cfg["base_url"], key, client=client, options=request_options(provider, effort))
 
 
 @dataclass
@@ -223,11 +237,13 @@ class RunResult:
 
 
 class LanguageAgent:
-    def __init__(self, backend: Backend, provider: str = "ollama", model: str | None = None,
-                 client=None, effort: str = "low", verbose: bool = True):
+    def __init__(self, backend: Backend, provider: str = DEFAULT_PROVIDER, model: str | None = None,
+                 client=None, effort: str = "low", verbose: bool = True, translator=None):
         self.backend = backend
         self.provider, self.model, self.client, self.effort = provider, model, client, effort
         self.verbose = verbose
+        # Optional franka_agent.translate.Translator: the planner always works in English.
+        self.translator = translator
 
     def _log(self, msg: str) -> None:
         if self.verbose:
@@ -247,6 +263,9 @@ class LanguageAgent:
     def run(self, command: str) -> RunResult:
         self._log(f"\n> {command}")
         run = RunResult(command=command, reply="")
+        if self.translator:
+            command = self.backend.wait_for(lambda: self.translator.to_english(command))
+            self._log(f"  (en) {command}")
         # Fresh conversation per command: the scene, not chat history, carries state between commands.
         chat = make_chat(self.provider, self.model, self.client, self.effort)
         chat.user(command)
@@ -272,5 +291,9 @@ class LanguageAgent:
         else:
             run.reply = f"Stopped after {MAX_TURNS} planning turns."
 
+        if self.translator:
+            self._log(f"  (en) {run.reply}")
+            reply = run.reply
+            run.reply = self.backend.wait_for(lambda: self.translator.from_english(reply))
         self._log(f"< {run.reply}")
         return run

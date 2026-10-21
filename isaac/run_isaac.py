@@ -5,6 +5,7 @@ Run with Isaac Sim's bundled Python:
     ./python.sh isaac/run_isaac.py --smoke                      # no LLM: scripted moves, prints PASS/FAIL
     ./python.sh isaac/run_isaac.py --livestream                 # then type commands in the terminal
     ./python.sh isaac/run_isaac.py --livestream --commands "put the red cube on the blue one"
+    ./python.sh isaac/run_isaac.py --livestream --lang de --commands "Stell den roten Würfel auf den blauen"
 
 The scene setup, controller construction and per-move loop follow Isaac Sim 6.2.0's
 source/standalone_examples/api/isaacsim.robot_motion.examples/manipulation/stacking.py
@@ -27,9 +28,10 @@ parser.add_argument("--headless", action="store_true")
 parser.add_argument("--livestream", action="store_true", help="headless + WebRTC livestream (implies --headless)")
 parser.add_argument("--smoke", action="store_true", help="run scripted moves without an LLM and exit")
 parser.add_argument("--commands", nargs="*", default=[], help="run these, then keep reading stdin")
-parser.add_argument("--provider", default="ollama")
+parser.add_argument("--provider", default="nvidia")
 parser.add_argument("--model", default=None)
 parser.add_argument("--effort", default="low")
+parser.add_argument("--lang", default=None, help="command language, e.g. ja, de, es-US (NVIDIA Riva Translate)")
 args, _ = parser.parse_known_args()
 
 from isaacsim import SimulationApp  # noqa: E402
@@ -72,6 +74,7 @@ if args.livestream:
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from franka_agent.agent import LanguageAgent  # noqa: E402
 from franka_agent.backend import ActionResult, run_move  # noqa: E402
+from franka_agent.translate import Translator  # noqa: E402
 from franka_agent.world import CUBE_SIZE, DEFAULT_BLOCKS, TABLE_ZONES, Block, Scene  # noqa: E402
 
 PHYSICS_DT = 1.0 / 60.0
@@ -265,7 +268,8 @@ def main() -> int:
     if args.smoke:
         return 1 if smoke(backend) else 0
 
-    agent = LanguageAgent(backend, provider=args.provider, model=args.model, effort=args.effort)
+    agent = LanguageAgent(backend, provider=args.provider, model=args.model, effort=args.effort,
+                          translator=Translator(args.lang) if args.lang else None)
     commands: queue.Queue[str] = queue.Queue()
     for c in args.commands:
         commands.put(c)

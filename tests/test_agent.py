@@ -102,11 +102,12 @@ class FakeOpenAI:
 
     def __init__(self, turns):
         self.turns = list(turns)
-        self.requests = []
+        self.requests, self.kwargs = [], []
         self.chat = NS(completions=NS(create=self.create))
 
     def create(self, **kwargs):
         self.requests.append(json.loads(json.dumps(kwargs["messages"])))
+        self.kwargs.append({k: v for k, v in kwargs.items() if k not in ("messages", "tools")})
         calls, content = self.turns.pop(0)
         tool_calls = [
             NS(id=f"call_{i}", function=NS(name=n, arguments=json.dumps(a)),
@@ -144,3 +145,46 @@ def test_hallucinated_object_is_rejected_by_skill_layer():
     LanguageAgent(backend, provider="ollama", client=client, verbose=False).run("purple on red")
     assert backend.moves == 0
     assert "unknown object" in client.requests[1][-1]["content"]
+
+
+def test_nemotron_is_default_and_sends_reasoning_switch():
+    client = FakeOpenAI([([], "Nothing to do.")])
+    LanguageAgent(MockBackend(), client=client, verbose=False).run("hello")
+    sent = client.kwargs[0]
+    assert sent["model"] == "nvidia/nemotron-3-super-120b-a12b"
+    assert sent["extra_body"] == {"chat_template_kwargs": {"enable_thinking": True, "low_effort": True}}
+    assert "reasoning_effort" not in sent
+
+
+class FakeTranslateClient:
+    """Stands in for Riva Translate: records the direction and returns canned text."""
+
+    def __init__(self, table):
+        self.table, self.directions = table, []
+        self.chat = NS(completions=NS(create=self.create))
+
+    def create(self, **kwargs):
+        direction, text = kwargs["messages"][0]["content"], kwargs["messages"][1]["content"]
+        self.directions.append(direction)
+        return NS(choices=[NS(message=NS(content=self.table[text]))])
+
+
+def test_translator_wraps_planner_in_english():
+    from franka_agent.translate import Translator
+
+    translate = FakeTranslateClient({
+        "pon el cubo rojo sobre el azul": "put the red cube on the blue one",
+        "Red is on blue.": "El rojo está sobre el azul.",
+    })
+    planner = FakeOpenAI([
+        ([("pick_and_place", {"object": "red_cube", "target": "blue_cube"})], ""),
+        ([], "Red is on blue."),
+    ])
+    backend = MockBackend()
+    agent = LanguageAgent(backend, client=planner, verbose=False,
+                          translator=Translator("es-US", client=translate))
+    run = agent.run("pon el cubo rojo sobre el azul")
+    assert planner.requests[0][1]["content"] == "put the red cube on the blue one"
+    assert run.reply == "El rojo está sobre el azul."
+    assert translate.directions == ["es-us-en", "en-es-us"]
+    assert backend.scene().support["red_cube"] == "blue_cube"

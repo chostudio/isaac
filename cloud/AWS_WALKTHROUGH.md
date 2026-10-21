@@ -3,7 +3,7 @@
 For: a Mac (Apple Silicon, no NVIDIA GPU), AWS credits, first GPU instance. Everything below works from the AWS web console plus Terminal. CLI commands are marked "extra".
 Facts were checked against official pages on 2026-10-20. Anything I could not verify is marked **[UNVERIFIED]**.
 
-What you will end up with: one EC2 GPU box running (a) Isaac Sim 6.2.0 in NVIDIA's container, streamed to your Mac, and (b) Ollama serving an ~8B model on the same GPU.
+What you will end up with: one EC2 GPU box running Isaac Sim 6.2.0 in NVIDIA's container, streamed to your Mac. The planner defaults to Nemotron on NVIDIA's hosted API (free key from build.nvidia.com, nothing to install). Step 7 optionally adds Ollama for a fully local, keyless model on the same GPU.
 
 ---
 
@@ -189,7 +189,9 @@ Commands from the [container install guide](https://docs.isaacsim.omniverse.nvid
 
 ---
 
-## 7. Install Ollama and a model (on the host, not in the container)
+## 7. Optional: install Ollama for a free local model (on the host, not in the container)
+
+Skip this if you use the default Nemotron planner; just pass your key into the container in step 8.
 
 1. ```bash
    curl -fsSL https://ollama.com/install.sh | sh
@@ -207,7 +209,7 @@ Commands from the [container install guide](https://docs.isaacsim.omniverse.nvid
    ```
    You should see a reply, then JSON listing `qwen3:8b`. `nvidia-smi` shows about 5 to 6 GB used while it is loaded.
 4. **Reaching it from the Isaac container:** the `docker run` in step 8 uses `--network=host`, so inside the container `http://localhost:11434` is the host's Ollama. Nothing else to configure. (Ollama listens on localhost:11434 by default **[UNVERIFIED in the page I read]**; do not change it to 0.0.0.0, which would be a security risk with no firewall rule protecting it anyway.)
-5. The repo's agent uses Ollama by default (`--provider ollama`, model `qwen3:8b`, via `http://localhost:11434/v1`). No API key needed.
+5. Run the agent with `--provider ollama` to use it (model `qwen3:8b`, via `http://localhost:11434/v1`). No API key needed.
 
 Ollama unloads models after idle time and reloads on demand, so VRAM use is not constant **[UNVERIFIED default timeout]**.
 
@@ -227,7 +229,7 @@ Run this on the instance (from the [docs](https://docs.isaacsim.omniverse.nvidia
 git clone <your-repo-url> ~/isaac-franka-agent   # or scp, step 9
 
 docker run --name isaac-sim --entrypoint bash -it --gpus all -e "ACCEPT_EULA=Y" --rm --network=host \
-    -e "PRIVACY_CONSENT=N" -e "ISAACSIM_HOST=<PUBLIC_IP>" \
+    -e "PRIVACY_CONSENT=N" -e "ISAACSIM_HOST=<PUBLIC_IP>" -e "NVIDIA_API_KEY=$NVIDIA_API_KEY" \
     -v ~/docker/isaac-sim/cache/main:/isaac-sim/.cache:rw \
     -v ~/docker/isaac-sim/cache/computecache:/isaac-sim/.nv/ComputeCache:rw \
     -v ~/docker/isaac-sim/cache/kit:/isaac-sim/kit/cache:rw \
